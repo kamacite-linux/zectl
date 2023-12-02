@@ -2412,6 +2412,16 @@ libze_list_cb(zfs_handle_t *zhdl, void *data) {
     boolean_t is_active = (is_mounted == 0) && (strcmp(cbd->lzeh->env_running_path, dataset) == 0);
     fnvlist_add_boolean_value(props, "active", is_active);
 
+    if (zfs_prop_get(zhdl, ZFS_PROP_USED, prop_buffer, ZFS_MAXPROPLEN, NULL,
+                     NULL, 0, 1) != 0) {
+        ret = libze_error_set(cbd->lzeh, LIBZE_ERROR_LIBZFS,
+                              "Failed get 'used' for %s: %s\n",
+                              handle_name,
+                              libzfs_error_description(cbd->lzeh->lzh));
+        goto err;
+    }
+    fnvlist_add_string(props, "used", prop_buffer);
+
     fnvlist_add_nvlist(*cbd->outnvl, prop_buffer, props);
 
     return ret;

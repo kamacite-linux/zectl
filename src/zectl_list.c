@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/nvpair.h>
+#include <libzfs/libzutil.h>
 #include <unistd.h>
 
 #define HEADER_NAME "Name"
@@ -31,6 +32,8 @@ typedef struct list_options {
 static int
 compute_column_widths(nvlist_t *be_props, list_options_t *options, list_value_widths_t *widths) {
     int active_width = 0;
+
+    widths->spaceused = 5; // zfs_nicebytes() always fits into 5 characters.
 
     if ((set_column_width_lookup(be_props, &widths->name, "name") != 0) ||
         (set_column_width_lookup(be_props, &widths->creation, "creation") != 0) ||
@@ -67,6 +70,8 @@ print_bes(nvlist_t **bootenvs, list_options_t *options) {
     nvlist_t *be_props;
     const char *string_prop;
     char *tab_suffix = "\t";
+    uint64_t spaceused;
+    char buf[6];
 
     list_value_widths_t widths = {0};
 
@@ -90,6 +95,7 @@ print_bes(nvlist_t **bootenvs, list_options_t *options) {
         printf("%-*s", (int) widths.name, HEADER_NAME);
         printf("%-*s", (int) widths.active, HEADER_ACTIVE);
         printf("%-*s", (int) widths.mountpoint, HEADER_MOUNTPOINT);
+        printf("%-*s", (int) widths.spaceused, HEADER_SPACEUSED);
         printf("%-*s", (int) widths.creation, HEADER_CREATION);
         fputs("\n", stdout);
     }
@@ -121,6 +127,12 @@ print_bes(nvlist_t **bootenvs, list_options_t *options) {
 
         if (nvlist_lookup_string(be_props, "mountpoint", &string_prop) == 0) {
             printf("%-*s%s", (int) widths.mountpoint, string_prop, tab_suffix);
+        }
+
+        if (nvlist_lookup_string(be_props, "used", &string_prop) == 0) {
+            spaceused = strtoull(string_prop, NULL, 10);
+            zfs_nicebytes(spaceused, buf, 6);
+            printf("%-*s%s", (int) widths.spaceused, buf, tab_suffix);
         }
 
         if (nvlist_lookup_string(be_props, "creation", &string_prop) == 0) {
