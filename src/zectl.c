@@ -98,6 +98,7 @@ main(int argc, char *argv[]) {
     int ret = EXIT_SUCCESS;
 
     libze_handle *lzeh = NULL;
+    char *root = NULL;
 
     /* Set up all commands */
     command_map_t ze_command_map[NUM_COMMANDS] = {
@@ -112,11 +113,24 @@ main(int argc, char *argv[]) {
         ze_usage();
         ret = EXIT_FAILURE;
         goto fin;
-    } else {
-        /* Shift commandline arguments removing the program name. */
-        for (int i = 0; i < ze_argc; i++) {
-            ze_argv[i] = argv[i + 1];
+    }
+
+    /* Check for the -r argument. */
+    if (strcmp(argv[1], "-r") == 0) {
+        if (argc < 4) {
+            fprintf(stderr, "%s: Missing command or -r option.\n", ZE_PROGRAM);
+            ze_usage();
+            ret = EXIT_FAILURE;
+            goto fin;
         }
+        root = strdup(argv[2]);
+        argv += 2;
+        ze_argc -= 2;
+    }
+
+    /* Shift commandline arguments removing the program name. */
+    for (int i = 0; i < ze_argc; i++) {
+        ze_argv[i] = argv[i + 1];
     }
 
     // TODO: Add back after testing
@@ -132,7 +146,7 @@ main(int argc, char *argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if ((lzeh = libze_init()) == NULL) {
+    if ((lzeh = libze_init(root)) == NULL) {
         fprintf(stderr,
                 "%s: System may not be configured correctly "
                 "for boot environments\n",
@@ -169,7 +183,7 @@ main(int argc, char *argv[]) {
     }
 
     /* Validate the running and activated boot environment */
-    if (libze_validate_system(lzeh) != LIBZE_ERROR_SUCCESS) {
+    if (root == NULL && libze_validate_system(lzeh) != LIBZE_ERROR_SUCCESS) {
         fputs(lzeh->libze_error_message, stderr);
         ret = EXIT_FAILURE;
         goto fin;

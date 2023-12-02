@@ -114,7 +114,7 @@ typedef struct libze_clone_cbdata {
 } libze_clone_cbdata;
 
 libze_handle *
-libze_init(void);
+libze_init(const char *root);
 
 void
 libze_fini(libze_handle *lzeh);

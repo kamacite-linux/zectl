@@ -949,8 +949,8 @@ libze_handle_rep_check_init(libze_handle *lzeh) {
         (void) strlcat(check_failure, "A handle isn't initialized\n", LIBZE_MAX_ERROR_LEN);
         ret++;
     }
-    if (!((strlen(lzeh->env_root) >= 1) && (strlen(lzeh->env_running_path) >= 3) &&
-          (strlen(lzeh->env_running) >= 1) && (strlen(lzeh->env_activated_path) >= 3) &&
+    if (!((strlen(lzeh->env_root) >= 1) &&
+          (strlen(lzeh->env_activated_path) >= 3) &&
           (strlen(lzeh->env_activated) >= 1) && (strlen(lzeh->env_pool) >= 1))) {
         (void) strlcat(check_failure, "Lengths of strings incorrect\n", LIBZE_MAX_ERROR_LEN);
         ret++;
@@ -1111,10 +1111,12 @@ libze_validate_system(libze_handle *lzeh) {
 
 /**
  * @brief Initialize libze handle.
+ * @param[in] root Name of the parent dataset for boot environments or NULL to
+ * determine it automatically from the bootfs property of the pool mounted at /.
  * @return Initialized handle, or NULL if unsuccessful.
  */
 libze_handle *
-libze_init(void) {
+libze_init(const char *root) {
     libze_handle *lzeh = NULL;
     char *slashp = NULL;
     char *zpool = NULL;
@@ -1125,11 +1127,22 @@ libze_init(void) {
     if ((lzeh->lzh = libzfs_init()) == NULL) {
         goto err;
     }
-    if (libze_get_root_dataset(lzeh) != 0) {
+    if (libze_get_root_dataset(lzeh) != 0 && root == NULL) {
         goto err;
     }
-    if (libze_util_cut(lzeh->env_running_path, ZFS_MAX_DATASET_NAME_LEN, lzeh->env_root, '/') !=
-        0) {
+
+    if (root != NULL &&
+        (strlen(root) > ZFS_MAX_DATASET_NAME_LEN ||
+         !zfs_dataset_exists(lzeh->lzh, root, ZFS_TYPE_FILESYSTEM) ||
+         strchr(root, '/') == NULL)) {
+        /* BE root argument is malformed. */
+        goto err;
+    }
+
+    if (root != NULL) {
+        strlcpy(lzeh->env_root, root, ZFS_MAX_DATASET_NAME_LEN);
+    } else if (libze_util_cut(lzeh->env_running_path, ZFS_MAX_DATASET_NAME_LEN,
+                              lzeh->env_root, '/') != 0) {
         goto err;
     }
     if ((slashp = strchr(lzeh->env_root, '/')) == NULL) {
