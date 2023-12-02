@@ -124,7 +124,7 @@ print_bes(nvlist_t **bootenvs, list_options_t *options) {
         }
 
         if (nvlist_lookup_string(be_props, "creation", &string_prop) == 0) {
-            printf("%-*s%s", (int) widths.creation, string_prop, tab_suffix);
+            printf("%-*s", (int) widths.creation, string_prop);
         }
 
         fputs("\n", stdout);
