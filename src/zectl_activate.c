@@ -6,7 +6,6 @@
 
 libze_error
 ze_activate(libze_handle *lzeh, int argc, char **argv) {
-    libze_error ret = LIBZE_ERROR_SUCCESS;
     int opt;
     libze_activate_options options = {.be_name = NULL, .noconfirm = B_FALSE};
 
@@ -48,6 +47,5 @@ ze_activate(libze_handle *lzeh, int argc, char **argv) {
         return LIBZE_ERROR_UNKNOWN;
     }
 
-err:
     return libze_activate(lzeh, &options);
 }

@@ -2070,7 +2070,6 @@ get_dependents(zfs_handle_t *zhp, void *data){
 static int
 libze_destroy_cb(zfs_handle_t *zh, void *data) {
     int ret = 0;
-    const char *tname = zfs_get_name(zh);
     libze_destroy_cbdata *cbd = data;
     dependents_cbdata_t cb = { 0 };
 
@@ -2185,7 +2184,6 @@ destroy_snapshot(libze_handle *lzeh, libze_destroy_options *options,
         return libze_error_set(lzeh, LIBZE_ERROR_EEXIST, "Snapshot %s does not exist\n", snapshot);
     }
     char be_snap_ds_buff[ZFS_MAX_DATASET_NAME_LEN] = "";
-    char be_full_ds[ZFS_MAX_DATASET_NAME_LEN] = "";
 
     // Get boot environment name, we know ZFS_MAX_DATASET_NAME_LEN wont be exceeded
     (void) libze_util_cut(options->be_name, ZFS_MAX_DATASET_NAME_LEN, be_snap_ds_buff, '@');

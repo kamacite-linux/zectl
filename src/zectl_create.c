@@ -62,6 +62,5 @@ ze_create(libze_handle *lzeh, int argc, char **argv) {
 
     ret = libze_create(lzeh, &be_clone);
 
-err:
     return ret;
 }

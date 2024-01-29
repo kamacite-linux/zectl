@@ -5,7 +5,6 @@
 
 libze_error
 ze_snapshot(libze_handle *lzeh, int argc, char **argv) {
-    libze_error ret = LIBZE_ERROR_SUCCESS;
     int opt;
 
     opterr = 0;
