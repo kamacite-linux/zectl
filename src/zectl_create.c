@@ -19,10 +19,11 @@ ze_create(libze_handle *lzeh, int argc, char **argv) {
     libze_error ret = LIBZE_ERROR_SUCCESS;
 
     char *be_existing = NULL;
+    char *desc = NULL;
 
     opterr = 0;
     int opt;
-    while ((opt = getopt(argc, argv, "e:r")) != -1) {
+    while ((opt = getopt(argc, argv, "e:rd:")) != -1) {
         switch (opt) {
             case 'e':
                 be_existing = optarg;
@@ -30,6 +31,9 @@ ze_create(libze_handle *lzeh, int argc, char **argv) {
                 break;
             case 'r':
                 be_clone.recursive = B_TRUE;
+                break;
+            case 'd':
+                desc = optarg;
                 break;
             default:
                 fprintf(stderr, "%s create: unknown option '-%c'\n", ZE_PROGRAM, optopt);
@@ -60,7 +64,13 @@ ze_create(libze_handle *lzeh, int argc, char **argv) {
         }
     }
 
-    ret = libze_create(lzeh, &be_clone);
+    if ((ret = libze_create(lzeh, &be_clone)) != LIBZE_ERROR_SUCCESS) {
+        return ret;
+    }
+
+    if (desc != NULL) {
+        return libze_set_description(lzeh, argv[0], desc);
+    }
 
     return ret;
 }

@@ -21,6 +21,8 @@
 // Unsigned long long is 64 bits or more
 #define ULL_SIZE 128
 
+#define ZE_PROP_DESCRIPTION ZE_PROP_NAMESPACE ":description"
+
 static int
 libze_clone_cb(zfs_handle_t *zhdl, void *data);
 
@@ -1286,6 +1288,35 @@ libze_set(libze_handle *lzeh, nvlist_t *properties) {
     return libze_dataset_set(lzeh, lzeh->env_root, properties);
 }
 
+libze_error
+libze_set_description(libze_handle *lzeh, const char *be, const char *desc) {
+    libze_error ret;
+    nvlist_t *props;
+    char ds[ZFS_MAX_DATASET_NAME_LEN];
+
+    if (validate_existing_be(lzeh, be, NULL, NULL) != LIBZE_ERROR_SUCCESS) {
+        return libze_error_prepend(lzeh, lzeh->libze_error,
+                                   "Failed to validate boot environment '%s':\n",
+                                   be);
+    }
+
+    // We've already validated the boot environment, so we know this works.
+    libze_util_concat(lzeh->env_root, "/", be, ZFS_MAX_DATASET_NAME_LEN, ds);
+
+    if ((props = fnvlist_alloc()) == NULL) {
+        return LIBZE_ERROR_NOMEM;
+    }
+    if (nvlist_add_string(props, ZE_PROP_DESCRIPTION, desc) != 0) {
+        ret = LIBZE_ERROR_NOMEM;
+        goto err;
+    }
+
+    ret = libze_dataset_set(lzeh, ds, props);
+ err:
+    fnvlist_free(props);
+    return ret;
+}
+
 /**************************************
  ************** activate **************
  **************************************/
@@ -2434,6 +2465,19 @@ libze_list_cb(zfs_handle_t *zhdl, void *data) {
         goto err;
     }
     fnvlist_add_string(props, "used", prop_buffer);
+
+    // Extract the special "comment" user property, if present.
+    nvlist_t *user_props = zfs_get_user_props(zhdl);
+    nvpair_t *it = NULL;
+    nvlist_t *user_prop;
+    while ((it = nvlist_next_nvpair(user_props, it)) != NULL) {
+        if (strcmp(nvpair_name(it), ZE_PROP_DESCRIPTION) != 0) {
+            continue;
+        }
+        user_prop = fnvpair_value_nvlist(it);
+        fnvlist_add_string(props, "description",
+                           fnvlist_lookup_string(user_prop, "value"));
+    }
 
     fnvlist_add_nvlist(*cbd->outnvl, prop_buffer, props);
 

@@ -189,6 +189,9 @@ libze_error
 libze_set(libze_handle *lzeh, nvlist_t *properties);
 
 libze_error
+libze_set_description(libze_handle *lzeh, const char *be, const char *desc);
+
+libze_error
 libze_snapshot(libze_handle *lzeh, char const boot_environment[static 1]);
 
 libze_error

@@ -13,6 +13,7 @@
 #define HEADER_MOUNTPOINT "Mountpoint"
 #define HEADER_SPACEUSED "Space"
 #define HEADER_CREATION "Creation"
+#define HEADER_DESCRIPTION "Description"
 
 typedef struct list_value_widths {
     size_t name;
@@ -92,12 +93,13 @@ print_bes(nvlist_t **bootenvs, list_options_t *options) {
         widths.mountpoint += HEADER_SPACING;
         widths.spaceused += HEADER_SPACING;
         widths.creation += HEADER_SPACING;
-        printf("%-*s", (int) widths.name, HEADER_NAME);
-        printf("%-*s", (int) widths.active, HEADER_ACTIVE);
-        printf("%-*s", (int) widths.mountpoint, HEADER_MOUNTPOINT);
-        printf("%-*s", (int) widths.spaceused, HEADER_SPACEUSED);
-        printf("%-*s", (int) widths.creation, HEADER_CREATION);
-        fputs("\n", stdout);
+        printf("%-*s%-*s%-*s%-*s%-*s%s\n",
+               (int) widths.name, HEADER_NAME,
+               (int) widths.active, HEADER_ACTIVE,
+               (int) widths.mountpoint, HEADER_MOUNTPOINT,
+               (int) widths.spaceused, HEADER_SPACEUSED,
+               (int) widths.creation, HEADER_CREATION,
+               HEADER_DESCRIPTION);
     }
 
     for (pair = nvlist_next_nvpair(*bootenvs, NULL); pair != NULL;
@@ -139,7 +141,9 @@ print_bes(nvlist_t **bootenvs, list_options_t *options) {
             printf("%-*s", (int) widths.creation, string_prop);
         }
 
-        fputs("\n", stdout);
+        string_prop = "-";
+        nvlist_lookup_string(be_props, "description", &string_prop);
+        printf("%s%s\n", tab_suffix, string_prop);
     }
 }
 
