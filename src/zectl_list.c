@@ -120,7 +120,7 @@ print_bes(nvlist_t **bootenvs, list_options_t *options) {
         printf("%-*s%s", (int) widths.active, active_buff, tab_suffix);
 
         if (nvlist_lookup_string(be_props, "mountpoint", &string_prop) == 0) {
-            printf("%-*s%s", (int) widths.creation, string_prop, tab_suffix);
+            printf("%-*s%s", (int) widths.mountpoint, string_prop, tab_suffix);
         }
 
         if (nvlist_lookup_string(be_props, "creation", &string_prop) == 0) {
