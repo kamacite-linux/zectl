@@ -2987,13 +2987,16 @@ libze_snapshot(libze_handle *lzeh, char const boot_environment[static 1]) {
     }
 
     if (zfs_snapshot(lzeh->lzh, snap_buf, B_TRUE, NULL) != 0) {
-        return libze_error_set(lzeh, LIBZE_ERROR_UNKNOWN, "Failed to take snapshot (%s).\n",
-                               snap_buf);
+        return libze_error_set(lzeh, LIBZE_ERROR_LIBZFS,
+                               "Failed to take snapshot (%s): %s\n", snap_buf,
+                               libzfs_error_description(lzeh->lzh));
     }
     if (strlen(be_bpool_ds) > 0) {
         if (zfs_snapshot(lzeh->lzh, snap_bpool_buf, B_TRUE, NULL) != 0) {
-            return libze_error_set(lzeh, LIBZE_ERROR_UNKNOWN, "Failed to take snapshot (%s).\n",
-                                   snap_bpool_buf);
+            return libze_error_set(lzeh, LIBZE_ERROR_LIBZFS,
+                                   "Failed to take snapshot (%s): %s\n",
+                                   snap_bpool_buf,
+                                   libzfs_error_description(lzeh->lzh));
         }
     }
 
