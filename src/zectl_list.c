@@ -8,12 +8,12 @@
 #include <libzfs/libzutil.h>
 #include <unistd.h>
 
-#define HEADER_NAME "Name"
-#define HEADER_ACTIVE "Active"
-#define HEADER_MOUNTPOINT "Mountpoint"
-#define HEADER_SPACEUSED "Space"
-#define HEADER_CREATION "Creation"
-#define HEADER_DESCRIPTION "Description"
+#define HEADER_NAME "NAME"
+#define HEADER_ACTIVE "ACTIVE"
+#define HEADER_MOUNTPOINT "MOUNTPOINT"
+#define HEADER_SPACEUSED "SPACE"
+#define HEADER_CREATION "CREATION"
+#define HEADER_DESCRIPTION "DESCRIPTION"
 
 typedef struct list_value_widths {
     size_t name;
