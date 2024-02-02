@@ -31,7 +31,10 @@ typedef enum libze_error {
     LIBZE_ERROR_EEXIST,     /**< Dataset/fs/snapshot doesn't exist */
     LIBZE_ERROR_MAXPATHLEN, /**< Dataset/fs/snapshot exceeds LIBZE_MAXPATHLEN */
     LIBZE_ERROR_PLUGIN,
-    LIBZE_ERROR_PLUGIN_EEXIST
+    LIBZE_ERROR_PLUGIN_EEXIST,
+    /**< Returned by plugins that don't want to be registered, e.g. because they
+       are for an irrelevant bootloader */
+    LIBZE_ERROR_PLUGIN_SKIP
 } libze_error;
 
 typedef struct libze_handle libze_handle;
@@ -105,6 +108,10 @@ struct libze_handle {
     char libze_error_message[LIBZE_MAX_ERROR_LEN];
     /**< Last error buffer */
     libze_error libze_error;
+
+    /**< Plugin table */
+    libze_plugin_fn_export **plugins;
+    size_t num_plugins;
 };
 
 typedef struct libze_clone_cbdata {
@@ -227,13 +234,16 @@ libze_error
 libze_add_get_property(libze_handle *lzeh, nvlist_t **properties, char const *property);
 
 libze_error
-libze_bootloader_set(libze_handle *lzeh);
-
-libze_error
 libze_be_props_get(libze_handle *lzeh, nvlist_t **result, char const *namespace);
 
 libze_error
 libze_be_prop_get(libze_handle *lzeh, char *result_prop, char const *property,
                   char const *namespace);
+
+libze_error
+libze_load_plugins(libze_handle *lzeh, const char *plugin_dir);
+
+libze_error
+libze_has_matching_bootloader_plugin(libze_handle *lzeh);
 
 #endif // ZECTL_LIBZE_H

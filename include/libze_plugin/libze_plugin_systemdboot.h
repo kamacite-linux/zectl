@@ -1,9 +1,9 @@
 #ifndef ZECTL_LIBZE_PLUGIN_SYSTEMDBOOT_H
 #define ZECTL_LIBZE_PLUGIN_SYSTEMDBOOT_H
 
-#include "libze/libze_plugin_manager.h"
+#include "libze/libze_plugin.h"
 
-char const *PLUGIN_SYSTEMDBOOT = "systemdboot";
+#define PLUGIN_SYSTEMDBOOT "systemdboot"
 
 libze_error
 libze_plugin_systemdboot_init(libze_handle *lzeh);
@@ -31,6 +31,7 @@ libze_error
 libze_plugin_systemdboot_pre_snapshot(libze_handle *lzeh, libze_snap_data *snap_data);
 
 libze_plugin_fn_export const exported_plugin = {
+    .name = PLUGIN_SYSTEMDBOOT,
     .plugin_init = libze_plugin_systemdboot_init,
     .plugin_pre_activate = libze_plugin_systemdboot_pre_activate,
     .plugin_mid_activate = libze_plugin_systemdboot_mid_activate,

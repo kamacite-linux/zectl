@@ -262,6 +262,16 @@ err:
 libze_error
 libze_plugin_systemdboot_init(libze_handle *lzeh) {
     libze_error ret = LIBZE_ERROR_SUCCESS;
+    char bootloader[ZFS_MAXPROPLEN];
+
+    ret = libze_be_prop_get(lzeh, bootloader, "bootloader", ZE_PROP_NAMESPACE);
+    if (ret != LIBZE_ERROR_SUCCESS) {
+        return ret;
+    }
+
+    if (strcmp(bootloader, "systemdboot") != 0) {
+        return LIBZE_ERROR_PLUGIN_SKIP;
+    }
 
     if ((ret = add_default_properties(lzeh)) != LIBZE_ERROR_SUCCESS) {
         return ret;
@@ -863,7 +873,7 @@ libze_plugin_systemdboot_post_activate(libze_handle *lzeh, char const be_name[LI
 
     char namespace_buf[ZFS_MAXPROPLEN];
     if (libze_plugin_form_namespace(PLUGIN_SYSTEMDBOOT, namespace_buf) !=
-        LIBZE_PLUGIN_MANAGER_ERROR_SUCCESS) {
+        LIBZE_ERROR_SUCCESS) {
         return libze_error_set(lzeh, LIBZE_ERROR_MAXPATHLEN,
                                "Exceeded max property name length.\n");
     }
@@ -1137,7 +1147,7 @@ libze_plugin_systemdboot_post_create(libze_handle *lzeh, libze_create_data *crea
 
     char namespace_buf[ZFS_MAXPROPLEN];
     if (libze_plugin_form_namespace(PLUGIN_SYSTEMDBOOT, namespace_buf) !=
-        LIBZE_PLUGIN_MANAGER_ERROR_SUCCESS) {
+        LIBZE_ERROR_SUCCESS) {
         return libze_error_set(lzeh, LIBZE_ERROR_MAXPATHLEN,
                                "Exceeded max property name length.\n");
     }
@@ -1331,8 +1341,8 @@ libze_plugin_systemdboot_post_destroy(libze_handle *lzeh, char const be_name[LIB
     char efi_mountpoint[ZFS_MAXPROPLEN];
     char namespace_buf[ZFS_MAXPROPLEN];
 
-    libze_plugin_manager_error per = libze_plugin_form_namespace(PLUGIN_SYSTEMDBOOT, namespace_buf);
-    if (per != LIBZE_PLUGIN_MANAGER_ERROR_SUCCESS) {
+    if (libze_plugin_form_namespace(PLUGIN_SYSTEMDBOOT, namespace_buf) !=
+        LIBZE_ERROR_SUCCESS) {
         return libze_error_set(lzeh, LIBZE_ERROR_MAXPATHLEN,
                                "Exceeded max property name length.\n");
     }
@@ -1376,8 +1386,8 @@ libze_plugin_systemdboot_post_rename(libze_handle *lzeh, char const be_name_old[
     char loader_buf_old[ZFS_MAXPROPLEN];
     char loader_buf_new[ZFS_MAXPROPLEN];
 
-    libze_plugin_manager_error per = libze_plugin_form_namespace(PLUGIN_SYSTEMDBOOT, namespace_buf);
-    if (per != LIBZE_PLUGIN_MANAGER_ERROR_SUCCESS) {
+    if (libze_plugin_form_namespace(PLUGIN_SYSTEMDBOOT, namespace_buf) !=
+        LIBZE_ERROR_SUCCESS) {
         return libze_error_set(lzeh, LIBZE_ERROR_MAXPATHLEN,
                                "Exceeded max property name length.\n");
     }
@@ -1462,7 +1472,7 @@ libze_plugin_systemdboot_pre_snapshot(libze_handle *lzeh, libze_snap_data *snap_
     char namespace_buf[ZFS_MAXPROPLEN];
 
     if (libze_plugin_form_namespace(PLUGIN_SYSTEMDBOOT, namespace_buf) !=
-        LIBZE_PLUGIN_MANAGER_ERROR_SUCCESS) {
+        LIBZE_ERROR_SUCCESS) {
         return libze_error_set(lzeh, LIBZE_ERROR_MAXPATHLEN,
                                "Exceeded max property name length.\n");
     }

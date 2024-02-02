@@ -154,24 +154,17 @@ main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    ret = libze_bootloader_set(lzeh);
-    if ((ret != LIBZE_ERROR_SUCCESS) && (ret != LIBZE_ERROR_PLUGIN_EEXIST)) {
+    ret = libze_load_plugins(lzeh, getenv("LIBZE_PLUGIN_DIRECTORY"));
+    if (ret != LIBZE_ERROR_SUCCESS) {
         fputs(lzeh->libze_error_message, stderr);
         return EXIT_FAILURE;
     }
 
-    // Clear any error messages
-    if (ret == LIBZE_ERROR_PLUGIN_EEXIST) {
-        char plugin[ZFS_MAXPROPLEN] = "";
-        ret = libze_be_prop_get(lzeh, plugin, "bootloader", ZE_PROP_NAMESPACE);
-        if (ret != LIBZE_ERROR_SUCCESS) {
-            fputs(lzeh->libze_error_message, stderr);
-            return EXIT_FAILURE;
-        }
+    ret = libze_has_matching_bootloader_plugin(lzeh);
+    if (ret != LIBZE_ERROR_SUCCESS) {
+        fputs(lzeh->libze_error_message, stderr);
         fprintf(stderr,
-                "WARNING: No bootloader plugin found under bootloader=%s.\n"
-                "Continuing with no bootloader plugin.\n",
-                plugin);
+                "WARNING: Changes may not be reflected in the bootloader.\n");
         (void) libze_error_clear(lzeh);
     }
 

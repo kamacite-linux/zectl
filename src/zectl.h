@@ -2,7 +2,6 @@
 #define ZECTL_ZECTL_H
 
 #include "libze/libze.h"
-#include "libze/libze_plugin_manager.h"
 
 #define HEADER_SPACING 2
 

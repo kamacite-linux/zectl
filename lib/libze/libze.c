@@ -5,10 +5,11 @@
 
 #include "libze/libze.h"
 
-#include "libze/libze_plugin_manager.h"
+#include "libze/libze_plugin.h"
 #include "libze/libze_util.h"
 
 #include <dirent.h>
+#include <dlfcn.h>
 #include <libzfs_core.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -22,6 +23,8 @@
 #define ULL_SIZE 128
 
 #define ZE_PROP_DESCRIPTION ZE_PROP_NAMESPACE ":description"
+
+#define PLUGIN_MAX_PATHLEN 512
 
 static int
 libze_clone_cb(zfs_handle_t *zhdl, void *data);
@@ -790,54 +793,6 @@ libze_error_clear(libze_handle *lzeh) {
 }
 
 /**
- * @brief Check if a plugin is set, if it is initialize it.
- * @param lzeh Initialized @p libze_handle
- * @return @p LIBZE_ERROR_SUCCESS on success, @p LIBZE_ERROR_PLUGIN on failure
- *
- * @post if @a lzeh->ze_props contains an existing org.zectl:bootloader,
- *            the bootloader plugin is initialized.
- */
-libze_error
-libze_bootloader_set(libze_handle *lzeh) {
-    char plugin[ZFS_MAXPROPLEN] = "";
-    libze_error ret = LIBZE_ERROR_SUCCESS;
-
-    ret = libze_be_prop_get(lzeh, plugin, "bootloader", ZE_PROP_NAMESPACE);
-    if (ret != LIBZE_ERROR_SUCCESS) {
-        return ret;
-    }
-
-    // No plugin set
-    if (strlen(plugin) == 0) {
-        return LIBZE_ERROR_SUCCESS;
-    }
-
-    void *p_handle = NULL;
-    libze_plugin_manager_error p_ret = libze_plugin_open(plugin, &p_handle);
-
-    if (p_ret == LIBZE_PLUGIN_MANAGER_ERROR_EEXIST) {
-        return libze_error_set(lzeh, LIBZE_ERROR_PLUGIN_EEXIST, "Plugin %s doesn't exist\n",
-                               plugin);
-    }
-
-    if (p_handle == NULL) {
-        return libze_error_set(lzeh, LIBZE_ERROR_PLUGIN, "Failed to open plugin %s\n", plugin);
-    } else {
-        if (libze_plugin_export(p_handle, &lzeh->lz_funcs) != 0) {
-            ret = libze_error_set(lzeh, LIBZE_ERROR_PLUGIN,
-                                  "Failed to open %s export table for plugin %s\n", plugin);
-        } else {
-            if (lzeh->lz_funcs->plugin_init(lzeh) != 0) {
-                ret = libze_error_set(lzeh, LIBZE_ERROR_PLUGIN, "Failed to initialize plugin %s\n",
-                                      plugin);
-            }
-        }
-    }
-
-    return ret;
-}
-
-/**
  * @brief Execute an unmount of a already temp_mount_be mounted dataset
  *
  * @param[in,out] lzeh       libze handle
@@ -1109,6 +1064,134 @@ libze_validate_system(libze_handle *lzeh) {
         }
     }
     return LIBZE_ERROR_SUCCESS;
+}
+
+static int
+plugin_filter(const struct dirent *d) {
+    return d->d_type == DT_REG && strstr(d->d_name, ".so") != NULL;
+}
+
+/**
+ * @brief Load and initialize applicable plugins, if any.
+ *
+ * @param lzeh Initialized @p libze_handle
+ * @param plugin_dir A path to a directory to scan for plugins, or NULL to use
+ * the default.
+ *
+ * @return @p LIBZE_ERROR_SUCCESS if all applicable plugins are initialized
+ *         correctly, or if there are no plugins.
+ *         @p LIBZE_ERROR_MAXPATHLEN if a plugin's path is too long.
+ *         @p LIBZE_ERROR_PLUGIN if a plugin fails to load or initialize.
+ */
+libze_error
+libze_load_plugins(libze_handle *lzeh, const char *plugin_dir) {
+    const char *path = plugin_dir;
+    if (!path) {
+        path = PLUGINS_DIRECTORY;
+    }
+    if (strlen(path) >= PLUGIN_MAX_PATHLEN - 1) {
+        return libze_error_set(lzeh, LIBZE_ERROR_MAXPATHLEN,
+                               "Plugin directory \"%s\" too long\n",
+                               path);
+    }
+
+    struct dirent **ent;
+    int n = scandir(path, &ent, plugin_filter, alphasort);
+    if (n < 0 && (errno == ENOENT || errno == ENOTDIR)) {
+        /* No plugins to load. */
+        return LIBZE_ERROR_SUCCESS;
+    }
+    if (n < 0) {
+        /* ENOMEM */
+        return libze_error_nomem(lzeh);
+    }
+
+    libze_plugin_fn_export **plugins = calloc(n, sizeof(libze_plugin_fn_export*));
+    if (!plugins) {
+        return libze_error_nomem(lzeh);
+    }
+
+    libze_error ret;
+    void *handle;
+    char plugin_path[PLUGIN_MAX_PATHLEN];
+    for (int i = 0; i < n; i++) {
+        ret = libze_util_concat(path, "/", ent[i]->d_name,
+                                PLUGIN_MAX_PATHLEN, plugin_path);
+        if (ret != LIBZE_ERROR_SUCCESS) {
+            return libze_error_set(lzeh, LIBZE_ERROR_MAXPATHLEN,
+                                   "Plugin \"%s\" path too long\n",
+                                   ent[i]->d_name);
+        }
+
+        handle = dlopen(plugin_path, RTLD_NOW);
+        if (!handle) {
+            return libze_error_set(lzeh, LIBZE_ERROR_PLUGIN,
+                                  "Failed to open plugin \"%s\": %s\n",
+                                   ent[i]->d_name, dlerror());
+        }
+        plugins[i] = (libze_plugin_fn_export *) dlsym(handle, "exported_plugin");
+        if (plugins[i] == NULL) {
+            /* Not a libze plugin. */
+            continue;
+        }
+
+        ret = plugins[i]->plugin_init(lzeh);
+        if (ret == LIBZE_ERROR_PLUGIN_SKIP) {
+            /* The plugin doesn't want to be registered, e.g. because it's for a
+               bootloader that's not in use. */
+            plugins[i] = NULL;
+            continue;
+        }
+        if (ret != LIBZE_ERROR_SUCCESS) {
+            return libze_error_set(lzeh, LIBZE_ERROR_PLUGIN,
+                                  "Failed to initialize plugin \"%s\"\n",
+                                   ent[i]->d_name);
+        }
+    }
+
+    lzeh->plugins = plugins;
+    lzeh->num_plugins = n;
+    return LIBZE_ERROR_SUCCESS;
+}
+
+/**
+ * @brief Check if there is a plugin for the active bootloader, if any.
+ *
+ * @param lzeh Initialized @p libze_handle
+ *
+ * @return @p LIBZE_ERROR_SUCCESS if a plugin is found or there is no active
+ *         bootloader and @p LIBZE_ERROR_PLUGIN_EEXIST otherwise.
+ *
+ * @post A bootloader is considered active if @a lzeh->ze_props contains an
+ *         existing org.zectl:bootloader property.
+ */
+libze_error
+libze_has_matching_bootloader_plugin(libze_handle *lzeh) {
+    char bootloader[ZFS_MAXPROPLEN];
+    libze_error ret;
+
+    ret = libze_be_prop_get(lzeh, bootloader, "bootloader", ZE_PROP_NAMESPACE);
+    if (ret != LIBZE_ERROR_SUCCESS) {
+        return ret;
+    }
+
+    // No bootloader, no problem.
+    if (strlen(bootloader) == 0) {
+        return LIBZE_ERROR_SUCCESS;
+    }
+
+    for (int i = 0; i < lzeh->num_plugins; i++) {
+        if (!lzeh->plugins[i] || !lzeh->plugins[i]->name) {
+            continue;
+        }
+        if (strcmp(bootloader, lzeh->plugins[i]->name) == 0) {
+            return LIBZE_ERROR_SUCCESS;
+        }
+    }
+
+    return libze_error_set(lzeh, LIBZE_ERROR_PLUGIN_EEXIST,
+                           "No active plugin for bootloader \"%s\"\n",
+                           bootloader);
 }
 
 /**

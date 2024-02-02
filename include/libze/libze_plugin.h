@@ -3,15 +3,6 @@
 
 #include "libze/libze.h"
 
-typedef enum libze_plugin_manager_error {
-    LIBZE_PLUGIN_MANAGER_ERROR_SUCCESS = 0,
-    LIBZE_PLUGIN_MANAGER_ERROR_UNKNOWN,
-    LIBZE_PLUGIN_MANAGER_ERROR_EEXIST,
-    LIBZE_PLUGIN_MANAGER_ERROR_MAXPATHLEN,
-    /**< Plugin directory @p PLUGINS_DIRECTORY doesn't exist */
-    LIBZE_PLUGIN_MANAGER_ERROR_PDIR_EEXIST,
-} libze_plugin_manager_error;
-
 typedef struct libze_activate_data {
     char const *const be_mountpoint;
     char const *const be_name;
@@ -50,6 +41,7 @@ typedef libze_error (*plugin_fn_post_rename)(libze_handle *lzeh,
 typedef libze_error (*plugin_fn_pre_snapshot)(libze_handle *lzeh, libze_snap_data *snap_data);
 
 typedef struct libze_plugin_fn_export {
+    const char *name;
     plugin_fn_init plugin_init;
     plugin_fn_pre_activate plugin_pre_activate;
     plugin_fn_mid_activate plugin_mid_activate;
@@ -60,19 +52,10 @@ typedef struct libze_plugin_fn_export {
     plugin_fn_pre_snapshot plugin_pre_snapshot;
 } libze_plugin_fn_export;
 
-libze_plugin_manager_error
-libze_plugin_open(char const *ze_plugin, void **p_handle);
-
-int
-libze_plugin_close(void *libhandle);
-
-int
-libze_plugin_export(void *libhandle, libze_plugin_fn_export **ze_export);
-
-libze_plugin_manager_error
+libze_error
 libze_plugin_form_namespace(char const plugin_name[static 1], char buf[ZFS_MAXPROPLEN]);
 
-libze_plugin_manager_error
+libze_error
 libze_plugin_form_property(char const plugin_name[static 1], char const plugin_suffix[static 1],
                            char buf[ZFS_MAXPROPLEN]);
 
